@@ -103,7 +103,7 @@ namespace MagicVilla_VillaAPI.Controllers
 
                 if (await _dbVilla.GetAsync(u => u.Name.ToLower() == villaCreatedDTO.Name.ToLower()) != null)
                 {
-                    ModelState.AddModelError("Custom-Error", "Villa name must be unique!");
+                    ModelState.AddModelError("ErrorMessages", "Villa name must be unique!");
                     return BadRequest(ModelState);
                 }
 
