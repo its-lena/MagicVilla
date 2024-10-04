@@ -37,13 +37,39 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<APIResponse>> GetVillas()
+        public async Task<ActionResult<APIResponse>> GetVillas([FromQuery(Name ="Number of adults")]int? occupancy, [FromQuery(Name ="square feet")]int? sqft, [FromQuery]string? search)
         {
             try
             {
                 //_logger.LogInformation("Getting All Villas...");
                 IEnumerable<Villa> villaList = await _dbVilla.GetAllAsync();
-                _response.Result = _mapper.Map<List<VillaDTO>>(villaList);
+
+                if (occupancy.HasValue && occupancy > 0)
+                {
+                    villaList = villaList.Where(v => v.Occupancy == occupancy);
+                }
+                if (sqft.HasValue && sqft > 0)
+                {
+                    villaList = villaList.Where(v => v.Sqft == sqft);
+                }
+                if (!string.IsNullOrEmpty(search))
+                {
+                    villaList = villaList.Where(v => 
+                    (v.Name.ToLower().Contains(search.ToLower())) ||
+                    (v.Details != null && v.Details.ToLower().Contains(search.ToLower())) || 
+                    (v.Amenity != null && v.Amenity.ToLower().Contains(search.ToLower())));
+                }
+
+                if (villaList.Count() == 0)
+                {
+                    _response.Result = "No Villa matched your filter";
+                }
+                else
+                {
+                    _response.Result = _mapper.Map<List<VillaDTO>>(villaList);
+
+                }
+                
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
             }
