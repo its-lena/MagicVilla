@@ -13,7 +13,8 @@ using System.Net;
 namespace MagicVilla_VillaAPI.Controllers
 {
     [ApiController]
-    [Route("api/VillaAPI")]
+    [Route("api/v{version:apiVersion}/VillaAPI")]
+    [ApiVersion("1.0")]
     public class VillaAPIController : ControllerBase
     {
         private readonly ILogger<VillaAPIController> _logger;
@@ -32,6 +33,7 @@ namespace MagicVilla_VillaAPI.Controllers
 
 
         [HttpGet]
+        [ResponseCache(CacheProfileName = "Duration30")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -57,6 +59,7 @@ namespace MagicVilla_VillaAPI.Controllers
 
 
         [HttpGet("{id:int}", Name = "GetVilla")]
+        [ResponseCache(CacheProfileName = "Duration30")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]

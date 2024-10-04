@@ -13,7 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace MagicVilla_VillaAPI.Controllers
 {
     [ApiController]
-    [Route("api/VillaNumberAPI")]
+    [Route("api/v{version:apiVersion}/VillaNumberAPI")]
+    [ApiVersion("1.0")]
     public class VillaNumberAPIController : ControllerBase
     {
         private readonly IMapper _mapper;
