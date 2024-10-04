@@ -54,7 +54,7 @@ namespace MagicVilla_VillaAPI.Controllers
 
             var user = await _userRepository.Register(registrationRequest);
 
-            if( user == null)
+            if (user.UserName == null || user.Name == null || user.ID == null)
             {
                 _response.IsSuccess = false;
                 _response.StatusCode = HttpStatusCode.BadRequest;
