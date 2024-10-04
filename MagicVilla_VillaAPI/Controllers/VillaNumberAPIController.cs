@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.AspNetCore.Authorization;
+using Newtonsoft.Json;
 
 namespace MagicVilla_VillaAPI.Controllers
 {
@@ -34,11 +35,17 @@ namespace MagicVilla_VillaAPI.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<APIResponse>> GetVillasNumber()
+        public async Task<ActionResult<APIResponse>> GetVillasNumber(int pagesize = 0, int pagenumber = 1)
         {
             try
             {
-                IEnumerable<VillaNumber> VillaNumberList = await _dbVillaNumber.GetAllAsync(includeProperties: "Villa");
+                IEnumerable<VillaNumber> VillaNumberList = await _dbVillaNumber.GetAllAsync(includeProperties: "Villa", pageSize:pagesize, pageNumber:pagenumber);
+                Pagination pagination = new Pagination()
+                {
+                    PageNumber = pagenumber,
+                    PageSize = pagesize
+                };
+                Response.Headers.Add("X-Pagination", JsonConvert.SerializeObject(pagination));
                 _response.Result = _mapper.Map<List<VillaNumberDTO>>(VillaNumberList);
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);

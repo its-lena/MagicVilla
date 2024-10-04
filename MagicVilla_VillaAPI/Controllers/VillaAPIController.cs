@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System.Net;
 
 namespace MagicVilla_VillaAPI.Controllers
@@ -37,12 +38,13 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<APIResponse>> GetVillas([FromQuery(Name ="Number of adults")]int? occupancy, [FromQuery(Name ="square feet")]int? sqft, [FromQuery]string? search)
+        public async Task<ActionResult<APIResponse>> GetVillas([FromQuery(Name ="Number of adults")]int? occupancy,
+            [FromQuery(Name ="square feet")]int? sqft, [FromQuery]string? search, int pagesize = 0, int pagenumber = 1)
         {
             try
             {
                 //_logger.LogInformation("Getting All Villas...");
-                IEnumerable<Villa> villaList = await _dbVilla.GetAllAsync();
+                IEnumerable<Villa> villaList = await _dbVilla.GetAllAsync(pageSize:pagesize, pageNumber:pagenumber);
 
                 if (occupancy.HasValue && occupancy > 0)
                 {
@@ -69,7 +71,12 @@ namespace MagicVilla_VillaAPI.Controllers
                     _response.Result = _mapper.Map<List<VillaDTO>>(villaList);
 
                 }
-                
+                Pagination pagination = new Pagination()
+                {
+                    PageNumber = pagenumber,
+                    PageSize = pagesize
+                };
+                Response.Headers.Add("X-pagination", JsonConvert.SerializeObject(pagination));
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
             }
@@ -99,12 +106,14 @@ namespace MagicVilla_VillaAPI.Controllers
                 {
                     //_logger.LogError("Get Villa Error with ID " + id);
                     _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
                     return BadRequest(_response);
                 }
                 var villa = await _dbVilla.GetAsync(u => u.Id == id);
                 if (villa == null)
                 {
                     _response.StatusCode = HttpStatusCode.NotFound;
+                    _response.IsSuccess = false;
                     return NotFound(_response);
                 }
                 _response.Result = _mapper.Map<VillaDTO>(villa);
@@ -133,37 +142,27 @@ namespace MagicVilla_VillaAPI.Controllers
             {
                 if (!ModelState.IsValid)
                 {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
                     return BadRequest(ModelState);
                 }
 
                 if (await _dbVilla.GetAsync(u => u.Name.ToLower() == villaCreatedDTO.Name.ToLower()) != null)
                 {
                     ModelState.AddModelError("ErrorMessages", "Villa name must be unique!");
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
                     return BadRequest(ModelState);
                 }
 
                 if (villaCreatedDTO == null)
                 {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
                     return BadRequest(villaCreatedDTO);
                 }
 
-                //if (villaDTO.Id > 0)
-                //{
-                //    return StatusCode(StatusCodes.Status500InternalServerError);
-                //}
-
                 Villa villa = _mapper.Map<Villa>(villaCreatedDTO);
-
-                //Villa model = new Villa()
-                //{
-                //    Amenity = villaCreatedDTO.Amenity,
-                //    Details = villaCreatedDTO.Details,
-                //    Name = villaCreatedDTO.Name,
-                //    ImageUrl = villaCreatedDTO.ImageUrl,
-                //    Occupancy = villaCreatedDTO.Occupancy,
-                //    Rate = villaCreatedDTO.Rate,
-                //    Sqft = villaCreatedDTO.Sqft
-                //};
 
                 await _dbVilla.CreateAsync(villa);
 
@@ -195,6 +194,8 @@ namespace MagicVilla_VillaAPI.Controllers
             {
                 if (id == 0)
                 {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
                     return BadRequest();
                 }
 
@@ -202,6 +203,8 @@ namespace MagicVilla_VillaAPI.Controllers
 
                 if (villa == null)
                 {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.NotFound;
                     return NotFound();
                 }
 
@@ -231,26 +234,13 @@ namespace MagicVilla_VillaAPI.Controllers
             {
                 if (villaUpdateDTO == null || id != villaUpdateDTO.Id)
                 {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
                     return BadRequest();
                 }
-                //var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
-                //villa.Name = villaDTO.Name;
-                //villa.Occupancy = villaDTO.Occupancy;
-                //villa.Sqft = villaDTO.Sqft;
 
                 Villa model = _mapper.Map<Villa>(villaUpdateDTO);
 
-                //Villa model = new Villa()
-                //{
-                //    Amenity = villaUpdateDTO.Amenity,
-                //    Details = villaUpdateDTO.Details,
-                //    Id = villaUpdateDTO.Id,
-                //    ImageUrl = villaUpdateDTO.ImageUrl,
-                //    Name = villaUpdateDTO.Name,
-                //    Occupancy = villaUpdateDTO.Occupancy,
-                //    Rate = villaUpdateDTO.Rate,
-                //    Sqft = villaUpdateDTO.Sqft
-                //};
                 await _dbVilla.UpdateAsync(model);
 
                 _response.StatusCode = HttpStatusCode.NoContent;
@@ -274,47 +264,31 @@ namespace MagicVilla_VillaAPI.Controllers
         public async Task<IActionResult> UpdatePartialVilla(int id, JsonPatchDocument<VillaUpdateDTO> patchDTO)
         {
             if (id == 0 || patchDTO == null)
-            { return BadRequest(); }
+            {
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.IsSuccess = false;
+                return BadRequest(); 
+            }
 
             var villa = await _dbVilla.GetAsync(u => u.Id == id, tracker:false);
 
             VillaUpdateDTO villaDTO = _mapper.Map<VillaUpdateDTO>(villa);
 
-            //VillaUpdateDTO villaDTO = new ()
-            //{
-            //    Amenity = villa.Amenity,
-            //    Details = villa.Details,
-            //    Id = villa.Id,
-            //    ImageUrl = villa.ImageUrl,
-            //    Name = villa.Name,
-            //    Occupancy = villa.Occupancy,
-            //    Rate = villa.Rate,
-            //    Sqft = villa.Sqft
-            //};
-
             if (villa == null)
             {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
                 return BadRequest();
             }
 
             patchDTO.ApplyTo(villaDTO, ModelState);
             Villa model = _mapper.Map<Villa>(villaDTO);
 
-            //Villa model = new Villa()
-            //{
-            //    Amenity = villaDTO.Amenity,
-            //    Details = villaDTO.Details,
-            //    Id = villaDTO.Id,
-            //    ImageUrl = villaDTO.ImageUrl,
-            //    Name = villaDTO.Name,
-            //    Occupancy = villaDTO.Occupancy,
-            //    Rate = villaDTO.Rate,
-            //    Sqft = villaDTO.Sqft
-            //};
-
             await _dbVilla.UpdateAsync(model);
             if (!ModelState.IsValid)
             {
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.IsSuccess = false;
                 return BadRequest(ModelState);
             }
             return NoContent();
